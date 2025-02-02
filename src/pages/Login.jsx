@@ -29,39 +29,38 @@ const Login = () => {
         const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
 
         // Step 3: Use EmailJS to send the OTP to the user's email
-        // const emailParams = {
-        //   to_email: username, // Assuming 'username' is the email
-        //   otp,
-        // };
+        const emailParams = {
+          to_email: username, // Assuming 'username' is the email
+          otp,
+        };
 
-        // const emailResponse = await emailjs.send(
-        //   'service_nxpm74r', // Replace with your EmailJS service ID
-        //   'template_so5nfd8', // Replace with your EmailJS template ID
-        //   emailParams,
-        //   'AX5QPEWUDd7UZrPe9' // Replace with your EmailJS public key
-        // );
+        const emailResponse = await emailjs.send(
+          'service_nxpm74r', // Replace with your EmailJS service ID
+          'template_so5nfd8', // Replace with your EmailJS template ID
+          emailParams,
+          'AX5QPEWUDd7UZrPe9' // Replace with your EmailJS public key
+        );
 
-        // if (emailResponse.status === 200) {
-        //   toast.success("OTP sent to your email. Please verify.");
+        if (emailResponse.status === 200) {
+          toast.success("OTP sent to your email. Please verify.");
 
-        //   // Step 4: Prompt the user to enter the OTP
-        //   const userOtp = prompt("Enter the OTP sent to your email:");
+          // Step 4: Prompt the user to enter the OTP
+          const userOtp = prompt("Enter the OTP sent to your email:");
 
-        //   // Step 5: Verify the OTP
-        //   if (parseInt(userOtp, 10) === otp) {
-        //     toast.success("OTP verified successfully. Logging in...");
+          // Step 5: Verify the OTP
+          if (parseInt(userOtp, 10) === otp) {
+            toast.success("OTP verified successfully. Logging in...");
 
-        //     // Step 6: Navigate to the user page after successful OTP verification
-        //     setTimeout(() => {
-        //       navigate('/User', { state: { voterst } });
-        //     }, 2000);
-        //   } else {
-        //     toast.error("Invalid OTP. Please try again.");
-        //   }
-        // } else {
-        //   toast.error("Failed to send OTP. Please try again.");
-        // }
-        navigate('/User', { state: { voterst } });
+            // Step 6: Navigate to the user page after successful OTP verification
+            setTimeout(() => {
+              navigate('/User', { state: { voterst } });
+            }, 2000);
+          } else {
+            toast.error("Invalid OTP. Please try again.");
+          }
+        } else {
+          toast.error("Failed to send OTP. Please try again.");
+        }
       } else {
         toast.error("Invalid details or voter not registered.");
       }
