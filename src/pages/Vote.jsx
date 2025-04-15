@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@material-tailwind/react";
@@ -8,6 +8,8 @@ import UserNavbar from "../components/Navbar/UserNavbar";
 import { BASE_URL } from "../helper";
 import { useLocation } from 'react-router-dom';
 import { useNavigate } from "react-router-dom";
+import * as faceapi from "face-api.js";
+
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
@@ -23,8 +25,21 @@ const Vote = () => {
   const [voter, setVoter] = useState({});
   const [election, setElection] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [faceVerify, setFaceVerify] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
   useEffect(() => {
+    // Load face-api models
+    const loadModels = async () => {
+      await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+      await faceapi.nets.faceLandmark68Net.loadFromUri("/models");
+      await faceapi.nets.faceRecognitionNet.loadFromUri("/models");
+      console.log("Face-api.js models loaded successfully");
+    };
+    loadModels();
+
     // Fetch election data by ID
     axios
       .get(`${BASE_URL}/getElection/${electionId}`)
@@ -48,7 +63,14 @@ const Vote = () => {
       .catch((err) => console.error("Error fetching voter: ", err));
   }, [electionId, voterId]);
 
-  const handleVote = (candidateId) => {
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+
+  }
+  const handleVote = async (candidateId) => {
     if (voter.voteStatus) {
       alert("You have already voted.");
     } else {
@@ -56,16 +78,104 @@ const Vote = () => {
         alert("Election is Not Started Yet!!");
       }
       else {
-        voter.voteStatus = true;
-        axios
-          .patch(`${BASE_URL}/voteForCandidate/${electionId}`, { candidateId })
-          .then(() => setIsModalOpen(true))
-          .catch((err) => console.error("Error voting: ", err));
+        try {
+          setLoading(true);
+          setFaceVerify(true);
+          // start the webcam
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          videoRef.current.srcObject = stream;
+          await new Promise((resolve) => (videoRef.current.onloadedmetadata = resolve));
 
-        axios.patch(`${BASE_URL}/updateVoter/${voter._id}`, voter);
+          // Capture live face data
+          const liveDetections = await faceapi.detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+          if (!liveDetections) {
+            alert("No face detected. Please try again.");
+            setFaceVerify(false);
+            return;
+          }
+
+          // Load voter's stored face image
+          const storedImage = await faceapi.fetchImage(voter?.image);
+          const storedDetections = await faceapi.detectSingleFace(storedImage, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks()
+            .withFaceDescriptor();
+
+          if (!storedDetections) {
+            alert("Voter photo not found. Contact admin.");
+            setFaceVerify(false);
+            return;
+          }
+
+          // Compare faces
+          const distance = faceapi.euclideanDistance(liveDetections.descriptor, storedDetections.descriptor);
+          console.log("Face Matching Distance:", distance);
+
+          if (distance < 0.5) {
+            voter.voteStatus = true;
+            const candidateV = candidates.find(c => c._id === candidateId);
+            const voteCard = {
+              voterId: voter.voterid,
+              name: voter.firstName + voter.lastName,
+              candidate: candidateV.fullName,
+              electionName: election.name,
+              electionId: electionId,
+              dateTime: new Date().toISOString()
+            };
+
+            const configRes = await axios.get('http://localhost:5000/get-config');
+            const serverUrl = configRes.data.serverUrl;
+
+            if (!serverUrl || serverUrl == "none") {
+              alert("Server URL not configured!");
+              setVerifying(false);
+              return;
+            }
+            const signResponse = await axios.post(`${serverUrl}sign_vote`, {
+              vote: JSON.stringify(voteCard)
+            });
+
+            const { signature, public_key } = signResponse.data;
+
+            axios
+              .patch(`${BASE_URL}/voteForCandidate/${electionId}`, {
+                candidateId,
+                voteCard,
+                signature: signature,
+                publicKey: public_key
+              })
+              .then(() => setIsModalOpen(true))
+              .catch((err) => console.error("Error voting: ", err));
+
+            const voteData = {
+              ...voter,
+              voteCard,
+              signature,
+              publicKey: public_key,
+            };
+            axios.patch(`${BASE_URL}/updateVoter/${voter._id}`, { voteData });
+            setFaceVerify(false);
+
+          } else {
+            alert("Face mismatch! Authentication failed");
+            setFaceVerify(false)
+          }
+        } catch (error) {
+          console.error("Error in face matching: ", error);
+        } finally {
+          setLoading(false);
+          if (videoRef.current.srcObject) {
+            videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+          }
+        }
       }
     }
   };
+
+
 
   return (
     <div className="bg-darkColor2 min-h-screen">
@@ -127,13 +237,35 @@ const Vote = () => {
                   color=""
                   onClick={() => handleVote(candidate._id)}
                   className="mt-6 bg-darkColor2"
+                  disabled={loading}
                 >
-                  Vote
+                  {loading ? "Verifying Face" : "Vote"}
                 </Button>
               </div>
             </motion.div>
           ))}
         </div>
+        {faceVerify && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <motion.div
+              className="bg-white rounded-lg p-8 w-96 text-center"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            >
+              <div className="flex flex-col items-center mt-0">
+                <h3 className="text-xl font-semibold text-gray-800 mb-4">
+                  Live Face Verification
+                </h3>
+                <div className="relative w-64 h-64 flex justify-center items-center border-2 border-lightColor2 rounded-lg overflow-hidden">
+                  <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                  <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
+                </div>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
 
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -147,8 +279,9 @@ const Vote = () => {
               <p className="text-gray-600 mb-6">You have successfully voted.</p>
               <Button color="green" onClick={() => {
                 setIsModalOpen(false)
+                stopCamera()
                 navigate('/User');
-                }}>
+              }}>
                 OK
               </Button>
             </motion.div>

@@ -15,7 +15,8 @@ const UpcomingElections = ({ voteStatus }) => {
         const fetchElections = async () => {
             try {
                 const response = await axios.get(`${BASE_URL}/getElections`); // Update with your API endpoint
-                setElections(response.data);
+                setElections(response.data.elections);
+                console.log(elections);
             } catch (error) {
                 console.error("Error fetching elections:", error);
             }
