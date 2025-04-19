@@ -19,7 +19,6 @@ const Vote = () => {
   const query = useQuery();
   const electionId = query.get('electionId');
   // const { electionId } = useParams();
-  // console.log(electionId)
   const voterId = Cookies.get("myCookie");
   const [candidates, setCandidates] = useState([]);
   const [voter, setVoter] = useState({});
@@ -45,7 +44,6 @@ const Vote = () => {
       .get(`${BASE_URL}/getElection/${electionId}`)
       .then((response) => {
         if (response.data.success) {
-          // console.log(response.data.election)
           setElection(response.data.election);
         }
 
@@ -111,7 +109,6 @@ const Vote = () => {
 
           // Compare faces
           const distance = faceapi.euclideanDistance(liveDetections.descriptor, storedDetections.descriptor);
-          console.log("Face Matching Distance:", distance);
 
           if (distance < 0.5) {
             voter.voteStatus = true;

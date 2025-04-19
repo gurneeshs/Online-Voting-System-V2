@@ -7,6 +7,8 @@ import FAQ from '../components/Home/FAQ'
 import UpcomingFeatures from '../components/Home/Upcoming'
 import Contact from '../components/Home/Contact'
 import Navbar from '../components/Navbar/Navbar'
+import ElectionsOverview from '../components/Home/ElectionOverview'
+import Footer from '../components/Home/Footer'
 
 const Home = () => {
     return (
@@ -15,11 +17,13 @@ const Home = () => {
                 <Navbar />
                 <BackgroundSlider/>
                 <About/>
+                <ElectionsOverview/>
                 <Features/>
                 <Team/>
                 <FAQ/>
                 <UpcomingFeatures />
                 <Contact />
+                <Footer/>
             </div>
         </div>
     )

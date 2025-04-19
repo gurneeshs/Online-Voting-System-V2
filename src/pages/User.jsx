@@ -23,15 +23,11 @@ const User = () => {
     setCookie();
   }
   const voterid = Cookies.get('myCookie');
-  // console.log(voterid);
 
   useEffect(() => {
     // const token = localStorage.getItem('token'); // Assuming token is stored in localStorage
-    // console.log(token);'
-    // console.log(voter)
       axios.get(`${BASE_URL}/getVoterbyID/${voterid}`)
         .then((response) => {
-          console.log(response.data)
           setVoter(response.data.voter);
         })
         .catch(error => {

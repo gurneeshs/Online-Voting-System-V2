@@ -9,13 +9,27 @@ import { User, User2, Calendar, MessageCircleCode, PhoneCall, Map, MapPin, Key, 
 import { BASE_URL } from '../helper';
 import Cookies from 'js-cookie';
 import emailjs from 'emailjs-com';
-
+import OtpModal from '../components/utilities/OtpModal';
 
 const Login = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState(null);
+  const [voterState, setVoterState] = useState(null);
+
+  const handleOtpVerification = (isValid) => {
+    if (isValid) {
+      setShowOtpModal(false);
+      toast.success("OTP verified successfully.");
+      navigate('/User', { state: { voterst: voterState } });
+    } else {
+      toast.error("Invalid OTP. Please try again.");
+    }
+  };
+
 
   const handleLogin = async () => {
     setLoading(true);
@@ -23,51 +37,40 @@ const Login = () => {
       // Step 1: Send login request to validate username and password
       const response = await axios.post(`${BASE_URL}/login`, { username, password });
       const voterst = response.data.voterObject;
+      setVoterState(voterst);
 
-      if(response.data.success){
-        navigate('/User', { state: { voterst } })
-      }
-
-      // if (response.data.success) {
-      //   // Step 2: Generate a random OTP
-      //   const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
-
-      //   // Step 3: Use EmailJS to send the OTP to the user's email
-      //   const emailParams = {
-      //     to_email: username, // Assuming 'username' is the email
-      //     otp,
-      //   };
-
-      //   const emailResponse = await emailjs.send(
-      //     'service_nxpm74r', // Replace with your EmailJS service ID
-      //     'template_so5nfd8', // Replace with your EmailJS template ID
-      //     emailParams,
-      //     'AX5QPEWUDd7UZrPe9' // Replace with your EmailJS public key
-      //   );
-
-      //   if (emailResponse.status === 200) {
-      //     toast.success("OTP sent to your email. Please verify.");
-
-      //     // Step 4: Prompt the user to enter the OTP
-      //     const userOtp = prompt("Enter the OTP sent to your email:");
-
-      //     // Step 5: Verify the OTP
-      //     if (parseInt(userOtp, 10) === otp) {
-      //       toast.success("OTP verified successfully. Logging in...");
-
-      //       // Step 6: Navigate to the user page after successful OTP verification
-      //       setTimeout(() => {
-      //         navigate('/User', { state: { voterst } });
-      //       }, 2000);
-      //     } else {
-      //       toast.error("Invalid OTP. Please try again.");
-      //     }
-      //   } else {
-      //     toast.error("Failed to send OTP. Please try again.");
-      //   }
-      // } else {
-      //   toast.error("Invalid details or voter not registered.");
+      // if(response.data.success){
+      //   navigate('/User', { state: { voterst } })
       // }
+
+      if (response.data.success) {
+        // Step 2: Generate a random OTP
+        const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
+        setGeneratedOtp(otp);
+
+        // Step 3: Use EmailJS to send the OTP to the user's email
+        const emailParams = {
+          to_email: username, // Assuming 'username' is the email
+          otp,
+        };
+
+        const emailResponse = await emailjs.send(
+          'service_nxpm74r', // Replace with your EmailJS service ID
+          'template_so5nfd8', // Replace with your EmailJS template ID
+          emailParams,
+          'AX5QPEWUDd7UZrPe9' // Replace with your EmailJS public key
+        );
+
+        if (emailResponse.status === 200) {
+          toast.success("OTP sent to your email. Please verify.");
+          setShowOtpModal(true)
+
+        } else {
+          toast.error("Failed to send OTP. Please try again.");
+        }
+      } else {
+        toast.error("Invalid details or voter not registered.");
+      }
     } catch (error) {
       toast.error("Error in Login Voter");
       console.error('Login failed:', error);
@@ -79,6 +82,13 @@ const Login = () => {
     <div className='bg-lightColor1'>
       <Navbar />
       <Toaster />
+      {showOtpModal && (
+        <OtpModal
+          generatedOtp={generatedOtp}
+          onClose={() => setShowOtpModal(false)}
+          onVerify={handleOtpVerification}
+        />
+      )}
 
       <div className="flex flex-col items-center min-h-screen bg-lightColor1">
         <section className="flex flex-col items-center justify-center flex-1 w-full px-4 md:px-8 lg:px-16">

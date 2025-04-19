@@ -8,6 +8,7 @@ import { Button } from '@material-tailwind/react';
 import { User, User2, Calendar, MessageCircleCode, PhoneCall, Map, MapPin, Key, Lock, LockKeyhole, Mail, Image, IdCard } from 'lucide-react';
 import { BASE_URL } from '../helper';
 import emailjs from 'emailjs-com';
+import OtpModal from '../components/utilities/OtpModal';
 
 const stateCityMapping = {
   "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur"],
@@ -43,8 +44,46 @@ const stateCityMapping = {
 const Signup = () => {
   const navigate = useNavigate();
 
+  
+
   const [loading, setLoading] = useState(false);
   const [age, setAge] = useState();
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const [generatedOtp, setGeneratedOtp] = useState(null);
+  const handleOtpVerify = async (isValid) => {
+    if (isValid) {
+      try {
+        const formDataToSend = new FormData();
+        for (const key in formData) {
+          formDataToSend.append(key, formData[key]);
+        }
+
+        const response = await axios.post(`${BASE_URL}/createVoter`, formDataToSend, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        if (response.data.success) {
+          toast.success("Voter Created Successfully. Redirecting...");
+          setTimeout(() => {
+            navigate('/Login');
+          }, 2000);
+        } else {
+          toast.error("Invalid Details");
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Error creating voter.");
+      } finally {
+        setShowOtpModal(false);
+      }
+    } else {
+      toast.error("Invalid OTP. Please try again.");
+    }
+  };
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -123,11 +162,10 @@ const Signup = () => {
     for (const key in formData) {
       formDataToSend.append(key, formData[key]);
     }
-    console.log(formDataToSend);
 
     try {
       const otp = Math.floor(100000 + Math.random() * 900000); // 6-digit OTP
-      console.log(formDataToSend);
+      setGeneratedOtp(otp);
 
       // Step 3: Send OTP to the user's email using EmailJS
       const emailParams = {
@@ -143,32 +181,8 @@ const Signup = () => {
       );
 
       if (emailResponse.status === 200) {
-        toast.success("OTP sent to your email. Please verify.");
-
-        // Step 4: Prompt the user to enter the OTP
-        const userOtp = prompt("Enter the OTP sent to your email:");
-
-        // Step 5: Verify the OTP
-        if (parseInt(userOtp, 10) === otp) {
-          toast.success("OTP verified successfully.");
-          const response = await axios.post(`${BASE_URL}/createVoter`, formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data'
-            }
-          });
-          //   console.log(response.data);
-          if (response.data.success) {
-            toast.success("Voter Created Successfully \n Redirecting You To Login Page")
-            setTimeout(() => {
-              navigate('/Login');
-            }, 2000)
-          }
-          else {
-            toast.error("Invalid Details")
-          }
-        } else {
-          toast.error("Invalid OTP. Please try again.");
-        }
+          setShowOtpModal(true);
+          toast.success("OTP sent to your email. Please verify.");
       } else {
         toast.error("Failed to send OTP. Please try again.");
       }
@@ -178,14 +192,27 @@ const Signup = () => {
       toast.error("Error in Creating Voter");
     } finally {
       setLoading(false);
+      // setShowOtpModal(false);
     }
   };
 
   return (
     <div className='bg-lightColor1'>
+
+
       <Navbar />
       <div><Toaster /></div>
       <section className="min-h-screen bg-lightColor1 flex flex-col items-center justify-center px-4">
+      {showOtpModal && (
+        <OtpModal
+          // otpInput={otpInput}
+          generatedOtp={generatedOtp}
+          // setOtpInput={setOtpInput}
+          onClose={() => setShowOtpModal(false)}
+          onVerify={handleOtpVerify}
+        />
+      )}
+
         <div className='w-full max-w-5xl p-6 bg-white rounded-lg shadow-lg m-3 '>
           <h2 className="text-3xl font-bold text-center text-darkColor2 mb-6">New Registration</h2>
 
