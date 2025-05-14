@@ -9,6 +9,8 @@ import Login from './pages/Login'
 import Adminlogin from './pages/Adminlogin'
 import User from './pages/User'
 import Vote from './pages/Vote'
+import Edit from './pages/Edit'
+
 
 function App() {
 
@@ -30,6 +32,7 @@ function App() {
         <Route path='/User' element={<User />} />
       </Routes>
       <Routes>
+        <Route path='/Edit' element={<Edit />} />
       </Routes>
       <Routes>
         <Route path='/Vote' element={<Vote />} />

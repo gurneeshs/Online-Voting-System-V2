@@ -122,7 +122,7 @@ const Vote = () => {
               dateTime: new Date().toISOString()
             };
 
-            const configRes = await axios.get('http://localhost:5000/get-config');
+            const configRes = await axios.get(`${BASE_URL}/get-config`);
             const serverUrl = configRes.data.serverUrl;
 
             if (!serverUrl || serverUrl == "none") {
@@ -133,6 +133,12 @@ const Vote = () => {
             const signResponse = await axios.post(`${serverUrl}sign_vote`, {
               vote: JSON.stringify(voteCard)
             });
+            if(!signResponse){
+              alert("Server URL not configured!");
+              setFaceVerify(false);
+              setVerifying(false);
+              return;
+            }
 
             const { signature, public_key } = signResponse.data;
 
@@ -147,7 +153,7 @@ const Vote = () => {
               .catch((err) => console.error("Error voting: ", err));
 
             const voteData = {
-              ...voter,
+              voter:voter,
               voteCard,
               signature,
               publicKey: public_key,
